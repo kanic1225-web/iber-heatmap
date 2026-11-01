@@ -31,6 +31,21 @@ Households and the income shares are real. The 69 Porsche locations drawn as dot
 | `geo/` | simplified map shapes |
 | `NOTES.md` | the long notes: every decision, source and formula |
 
+## Upload your own numbers
+
+The sidebar has two tabs. **Controls** is the map's switches and sliders. **Upload** lets you replace any of the five inputs with your own CSV: Can park, Can charge, Renewal soon, Can pay, Households. Everything runs in your browser. Nothing is sent or stored, and a reload forgets it.
+
+The format rule is simple: one file per item, one row per region, and the easiest way to get it right is to click **Template** under that item, edit the file in Excel, and click **Upload**.
+
+- Columns: `id`, `name_en`, `name_ja` and the value column, which is `park`, `charge`, `timing`, `households`, or for Can pay the three columns `money_10m`, `money_15m`, `money_20m`.
+- A row only needs one key: our region id such as `JP-13-103`, a prefecture number such as `13`, or the English or Japanese name. You can send a partial file; regions you leave out keep the built-in number, and blank cells do the same.
+- Shares can be percentages (61.8) or fractions (0.618). If any value in the column is above 1 it is read as percent.
+- A row for Tokyo as a whole applies to all 24 Tokyo pieces. Rows for single wards override it. For households, a Tokyo total is split across the pieces in proportion.
+- Files saved by Japanese Excel in Shift_JIS work too.
+- A file uploaded under the wrong item, or without a key column, gives a one-line error and changes nothing. The × on a chip removes that upload; "Clear all uploads" removes them all.
+
+Values typed into the boxes on the Controls tab sit on top of uploaded data and show as "your number" in the tooltips; uploaded values show as "uploaded".
+
 ## Build it yourself
 
 You need Python 3. Node is optional (it only syntax-checks the page) and Google Chrome is optional (it only renders preview screenshots).
