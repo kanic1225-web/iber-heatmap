@@ -1,0 +1,592 @@
+<title>Heatmap</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  /* neutral cool palette */
+  --bg: #FFFFFF; --card: #FFFFFF; --fg: #15181E; --text: #3B4049; --muted: #6B7280;
+  --line: #E5E7EB; --line-soft: #EEF0F3;
+  /* accent */
+  --accent: #12256E; --accent-dark: #0C1A50; --accent-soft: #EAECF5;
+  /* ranking bar gradient start: --accent mixed ~55% toward --ramp-mid (#61BCF6) */
+  --bar-from: #3D78B9;
+  /* machined rim (cards, segmented active button, inset frame) */
+  --groove: #E2E5EA;
+  --rim-top: rgba(255,255,255,0.95);
+  --rim-side: rgba(21,24,30,0.10);
+  --rim-sheen: linear-gradient(180deg, rgba(255,255,255,0.9) 0, rgba(255,255,255,0) 6px);
+  --rim-shadow: 0 0 0 2px var(--groove), 0 3px 5px -1px rgba(21,24,30,0.10);
+  /* map */
+  --map-bg: #E9EBEF; --map-stroke: #C9CED6; --context: #DDE0E6; --layer-base: #FFFFFF; --layer-stroke: #C9CED6;
+  --halo: #FFFFFF;
+  --switch-on: #34C759; --switch-off: #E9E9EA; --track: #D5D7DE; --knob: #FFFFFF; --bar-track: #EEF0F3;
+  --tip-shadow: rgba(21,24,30,.14);
+  /* map ramp: white -> soft blue #61BCF6 (t = .5) -> #12256E, plain sRGB interpolation (= CSS linear-gradient) */
+  --ramp0: #FFFFFF; --ramp-mid: #61BCF6; --ramp1: #12256E;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: 'IBM Plex Sans', Arial, sans-serif; font-size: 15px; line-height: 1.45; }
+.wrap {
+  max-width: 1480px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 28px;
+}
+h1, h2, h3 { font-family: 'Source Serif 4', Georgia, serif; color: var(--fg); margin: 0; font-weight: 600; }
+header.top { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 16px; }
+header.top h1 { font-size: 26px; letter-spacing: -.01em; }
+.eyebrow, .clabel, .stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; line-height: 1.3; }
+
+/* machined rim: bright top edge, faint sides, no bottom edge, 2px outer groove, soft drop shadow, top sheen */
+.card {
+  background: var(--rim-sheen), var(--card);
+  border: 1px solid var(--rim-side); border-top-color: var(--rim-top); border-bottom-color: transparent;
+  box-shadow: var(--rim-shadow); border-radius: 0;
+}
+
+/* Controls: one filter per row, label column on the left */
+.controls { padding: 4px 16px; }
+.crow { display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 0; min-height: 52px; border-top: 1px solid var(--line-soft); }
+.crow:first-child { border-top: 0; }
+.clabel { white-space: nowrap; }
+.seg { display: inline-flex; flex-wrap: wrap; justify-self: start; gap: 2px; padding: 2px; background: var(--line-soft); border: 1px solid var(--line); border-radius: 0; }
+.seg input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.seg label { padding: 7px 8px; cursor: pointer; color: var(--text); font-size: 13px; border: 1px solid transparent; border-radius: 0; user-select: none; transition: background .15s, color .15s; }
+.seg input:checked + label {
+  background: var(--rim-sheen), var(--card); color: var(--accent-dark); font-weight: 600;
+  border-color: var(--rim-side); border-top-color: var(--rim-top); border-bottom-color: transparent; box-shadow: var(--rim-shadow);
+}
+.seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* iOS-style switch (iOS light-mode colours, no hover state): the real checkbox sits invisibly over the track */
+.switch { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; justify-self: start; font-size: 13px; color: var(--muted); }
+.switch input { position: absolute; left: 0; top: 50%; width: 40px; height: 24px; margin: -12px 0 0; opacity: 0; cursor: pointer; }
+.switch .track { position: relative; flex: none; width: 40px; height: 24px; border-radius: 12px; background: var(--switch-off); transition: background .15s ease; }
+.switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--knob); box-shadow: 0 1px 3px rgba(21,24,30,.28); transition: transform .15s ease; }
+.switch input:checked + .track { background: var(--switch-on); }
+.switch input:checked + .track::after { transform: translateX(16px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slider { min-width: 0; width: 100%; }
+.slider-head { font-size: 13px; color: var(--text); margin-bottom: 4px; }
+.val { font-size: 15px; color: var(--fg); }
+/* range: square track and thumb, blue */
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: var(--track); border: 0; border-radius: 0; }
+input[type="range"]::-moz-range-track { height: 4px; background: var(--track); border: 0; border-radius: 0; }
+input[type="range"]::-moz-range-progress { height: 4px; background: var(--accent); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6px; background: var(--accent); border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--accent-dark); border-radius: 0; }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: var(--accent); border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--accent-dark); border-radius: 0; }
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--accent-dark); }
+input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* cutoff stop labels: one row when the slider is wide enough, else the end stops on row 1 and the middle stop centred below */
+.slider-cut { container-type: inline-size; }
+.cutoff-stops { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 6px; font-size: 11px; white-space: nowrap; color: var(--text); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.cutoff-stops span:nth-child(1) { grid-column: 1; grid-row: 1; }
+.cutoff-stops span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; text-align: center; }
+.cutoff-stops span:nth-child(3) { grid-column: 3; grid-row: 1; text-align: right; }
+@container (min-width: 210px) {
+  .cutoff-stops { grid-template-columns: repeat(3, auto); justify-content: space-between; }
+  .cutoff-stops span:nth-child(n) { grid-column: auto; grid-row: 1; }
+}
+
+/* Main layout */
+/* below 1200px: controls above the map card; from 1200px: a 360px filter column beside the map card */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1200px) {
+  .layout { grid-template-columns: 392px minmax(0, 1fr); }
+}
+.mapcard { padding: 12px; min-width: 0; container-type: inline-size; }
+/* inside the map card: map on the left, numbers on the right (stacked under the map when the card is narrow) */
+.mapgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.mapcol { min-width: 0; }
+.panel { padding: 14px 4px 4px; border-top: 1px solid var(--line); display: grid; gap: 14px; align-content: start; min-width: 0; }
+@container (min-width: 860px) {
+  .mapgrid { grid-template-columns: minmax(0, 1fr) 300px; gap: 0; }
+  .panel { border-top: 0; border-left: 1px solid var(--line); padding: 4px 6px 4px 16px; margin-left: 14px; }
+}
+.mapbox { position: relative; }
+#map { display: block; width: 100%; height: auto; background: var(--map-bg); border-radius: 0; }
+
+.tip { position: absolute; z-index: 5; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 0; box-shadow: 0 0 0 2px var(--groove), 0 6px 14px var(--tip-shadow); padding: 9px 11px; font-size: 12.5px; width: 300px; max-width: calc(100% - 16px); pointer-events: none; }
+.tip.pinned { pointer-events: auto; border-color: var(--accent); }
+.tip h4 { margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-size: 15px; }
+.tip .ja { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+.tip table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tip td { padding: 2px 0; color: var(--text); vertical-align: top; }
+.tip td.n { text-align: right; color: var(--fg); white-space: nowrap; padding-left: 8px; }
+.tip tr.sep td { border-top: 1px solid var(--line-soft); padding-top: 4px; }
+.tip .off { color: var(--muted); }
+.tip .pinhint { color: var(--muted); font-size: 11px; margin-top: 5px; }
+
+/* Map paths */
+.region { fill: var(--layer-base); stroke: var(--map-stroke); stroke-width: .6; vector-effect: non-scaling-stroke; cursor: pointer; }
+.inset .region { stroke-width: .8; }
+.context { fill: var(--context); stroke: var(--map-stroke); stroke-width: .5; vector-effect: non-scaling-stroke; pointer-events: none; }
+.layer path { stroke: var(--layer-stroke); stroke-width: .5; vector-effect: non-scaling-stroke; pointer-events: none; transition: fill .45s ease, fill-opacity .45s ease; }
+.hl { fill: none; stroke: var(--fg); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* inset frame: the rim recipe drawn in SVG (groove ring, faint sides, bright top edge, top sheen) */
+.inset-groove { fill: none; stroke: var(--groove); stroke-width: 2; }
+.inset-frame { fill: var(--card); stroke: var(--rim-side); stroke-width: 1; }
+.inset-top { stroke: var(--rim-top); stroke-width: 1; }
+.inset-sheen { fill: url(#rim-sheen); pointer-events: none; }
+.inset-label { fill: var(--fg); font: 600 15px 'IBM Plex Sans', Arial, sans-serif; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.locator { fill: none; stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+.dealer { fill: var(--fg); stroke: var(--halo); stroke-width: 1.6; }
+
+/* Numbers panel */
+.panel h2 { font-size: 18px; }
+.stat .k { letter-spacing: .14em; }
+.stat .v { font-family: 'Source Serif 4', Georgia, serif; font-size: 30px; font-weight: 600; color: var(--fg); font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 2px; }
+.rank { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.rank li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; font-size: 13.5px; }
+.rank .i { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rank .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.rank .rv { font-variant-numeric: tabular-nums; color: var(--text); }
+/* bar fill: subtle gradient sized to the FULL track (100cqw of the .bar container), so the same x = the same colour on every bar */
+.rank .bar { grid-column: 2 / 4; height: 6px; background: var(--bar-track); border-radius: 999px; overflow: hidden; container-type: inline-size; }
+.rank .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--bar-from), var(--accent)) left center / 100cqw 100% no-repeat; border-radius: 999px; transition: width .45s ease; }
+.hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 10px; }
+@media (max-width: 560px) {
+  header.top h1 { font-size: 22px; }
+  .stat .v { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Heatmap</h1>
+  </header>
+
+  <div class="layout">
+  <section class="card controls" aria-label="Map controls">
+      <div class="crow">
+        <label class="clabel" for="layer-park">Can park</label>
+        <label class="switch"><input type="checkbox" id="layer-park" checked><span class="track" aria-hidden="true"></span><span class="stext">has a parking space</span></label>
+      </div>
+      <div class="crow">
+        <label class="clabel" for="layer-charge">Can charge</label>
+        <label class="switch"><input type="checkbox" id="layer-charge" checked><span class="track" aria-hidden="true"></span><span class="stext">charger possible</span></label>
+      </div>
+      <div class="crow">
+        <label class="clabel" for="layer-timing">Renewal soon</label>
+        <label class="switch"><input type="checkbox" id="layer-timing" checked><span class="track" aria-hidden="true"></span><span class="stext">within 24 months</span></label>
+      </div>
+      <div class="crow">
+        <label class="clabel" for="layer-money">Can pay</label>
+        <label class="switch"><input type="checkbox" id="layer-money" checked><span class="track" aria-hidden="true"></span><span class="stext lbl-money">income over ¥20,000,000</span></label>
+      </div>
+      <div class="crow">
+        <span class="clabel" id="lbl-mode">Values</span>
+        <div class="seg" role="radiogroup" aria-labelledby="lbl-mode">
+          <input type="radio" name="mode" id="mode-abs" value="abs" checked><label for="mode-abs">Absolute</label>
+          <input type="radio" name="mode" id="mode-pct" value="pct"><label for="mode-pct">Percentage</label>
+        </div>
+      </div>
+      <div class="crow">
+        <label class="clabel" for="show-dealers">Dealers</label>
+        <label class="switch"><input type="checkbox" id="show-dealers" checked><span class="track" aria-hidden="true"></span><span class="stext">Show dealers</span></label>
+      </div>
+      <div class="crow">
+        <label class="clabel" for="cutoff-income">Income cutoff</label>
+        <div class="slider slider-cut">
+          <div class="slider-head">income over <strong id="cutoff-value" class="val">¥20,000,000</strong></div>
+          <input type="range" id="cutoff-income" min="0" max="2" step="1" value="2" aria-valuetext="¥20,000,000">
+          <div class="cutoff-stops" aria-hidden="true"><span>¥10,000,000</span><span>¥15,000,000</span><span>¥20,000,000</span></div>
+        </div>
+      </div>
+      <div class="crow">
+        <label class="clabel" for="contrast">Contrast</label>
+        <div class="slider">
+          <div class="slider-head"><strong id="contrast-value" class="val">100%</strong></div>
+          <input type="range" id="contrast" min="0" max="100" step="5" value="100" aria-valuetext="100%">
+        </div>
+      </div>
+  </section>
+
+    <section class="card mapcard" aria-label="Map and numbers">
+     <div class="mapgrid">
+      <div class="mapcol">
+      <div class="mapbox" id="mapbox">
+        <svg id="map" viewBox="0 0 960 790" role="img" aria-labelledby="map-title">
+          <title id="map-title">Map of Japan by prefecture with an inset of Tokyo's 23 wards</title>
+          <defs>
+            <clipPath id="inset-clip"><rect id="inset-clip-rect"></rect></clipPath>
+            <linearGradient id="rim-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".9"></stop><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop></linearGradient>
+          </defs>
+          <g id="main-view"></g>
+          <g id="inset-view" class="inset"></g>
+        </svg>
+        <div class="tip" id="tip" role="status" hidden></div>
+      </div>
+      </div>
+      <aside class="panel" aria-label="Numbers">
+        <div class="stat">
+          <div class="k" id="p-total-k">Households passing, Japan</div>
+          <div class="v" id="p-total">0</div>
+        </div>
+        <hr class="hr">
+        <div class="rankblk">
+          <h2 id="rank-title">Top 8 prefectures</h2>
+          <ol class="rank" id="rank"></ol>
+        </div>
+      </aside>
+     </div>
+    </section>
+  </div>
+
+  <footer id="footer">(Can park, Can charge, Renewal soon are mock data)</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+/*@@DATA@@*/
+
+(function () {
+  "use strict";
+
+  // ---------- constants ----------
+  var DOORS = ["park", "charge", "timing", "money"];
+  var DOOR_LABEL = { park: "Can park", charge: "Can charge", timing: "Renewal within 24 months", money: "Can pay" };
+  var RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var DUR = RM ? 0 : 450;
+  var INSET = { x: 640, y: 478, w: 310, h: 302 };
+  var KEYS = { cutoff: "983map.cutoff", contrast: "983map.contrast.v2" };
+
+  // Color scale. Values are households passing the active doors ("abs") or that as % of households ("pct").
+  // Linear only: t = value / top. t is FIXED (independent of which doors are on), then the contrast slider
+  // optionally stretches t between the palest and darkest unit.
+  var SCALES = {
+    abs: { domain: [0, 2000000] },
+    pct: { domain: [0, 40] }
+  };
+
+  // ---------- state ----------
+  var state = { mode: "abs", dealers: true, cutoff: 2, contrast: 100,
+    layers: { park: true, charge: true, timing: true, money: true }, hover: null, pinned: null };
+  function load(key, ok) { try { var v = localStorage.getItem(key); return v !== null && ok(v) ? v : null; } catch (e) { return null; } }
+  function save(key, v) { try { localStorage.setItem(key, String(v)); } catch (e) {} }
+  var sv;
+  if ((sv = load(KEYS.cutoff, function (v) { return /^[012]$/.test(v); })) !== null) state.cutoff = +sv;
+  if ((sv = load(KEYS.contrast, function (v) { return /^\d+$/.test(v); })) !== null) state.contrast = Math.max(0, Math.min(100, Math.round(+sv / 5) * 5));
+
+  // ---------- map units ----------
+  // Main map = 47 prefecture units: 46 prefectures + "JP-13" Tokyo, whose numbers are the SUM of the 24 Tokyo
+  // pieces (23 wards + Tokyo outside 23 wards). Inset = the 23 wards as separate units.
+  var TOKYO_ID = "JP-13";
+  var byId = {}, geoById = {}, units = {};
+  REGIONS.forEach(function (r) { byId[r.id] = r; });
+  GEO.features.forEach(function (f) { geoById[f.id] = f; });
+  var pieceFeatures = GEO.features.filter(function (f) { return byId[f.id]; });
+  var wardFeatures = pieceFeatures.filter(function (f) { return byId[f.id].group === "ward"; });
+  REGIONS.forEach(function (r) {
+    units[r.id] = { id: r.id, name_en: r.name_en, short: r.name_en, name_ja: r.name_ja, group: r.group, pieces: [r], households: r.households };
+  });
+  var tokyoPieces = REGIONS.filter(function (r) { return r.group === "ward" || r.group === "tokyo_rest"; });
+  units[TOKYO_ID] = { id: TOKYO_ID, name_en: "Tokyo (all 62 municipalities, summed)", short: "Tokyo", name_ja: "東京都（合計）", group: "tokyo",
+    pieces: tokyoPieces, households: d3.sum(tokyoPieces, function (r) { return r.households; }) };
+  var mainUnitIds = REGIONS.filter(function (r) { return r.group === "prefecture"; }).map(function (r) { return r.id; }).concat([TOKYO_ID]).sort();
+  var mainUnits = mainUnitIds.map(function (id) { return units[id]; });
+  var mainFeatures = mainUnitIds.map(function (id) { return geoById[id]; });
+  var insetUnits = wardFeatures.map(function (f) { return units[f.id]; });
+  var isWard = function (id) { return !!(units[id] && units[id].group === "ward"); };
+
+  // ---------- computations ----------
+  // money: the real share over the selected income cutoff (m10 / m15 / m20); park, charge and timing: placeholder base rates
+  var MONEY_KEYS = ["m10", "m15", "m20"];
+  function rate(r, door) {
+    return door === "money" ? r.money[MONEY_KEYS[state.cutoff]] : r[door].base;
+  }
+  function afterLayers(r) { var v = r.households; DOORS.forEach(function (d) { if (state.layers[d]) v *= rate(r, d); }); return v; }
+  // unit versions: sums over the unit's pieces (identical to the region functions for single-piece units)
+  function uAfterLayers(u) { return d3.sum(u.pieces, afterLayers); }
+  function uRate(u, door) { return d3.sum(u.pieces, function (r) { return r.households * rate(r, door); }) / u.households; }
+  function toMode(hh, v) { return state.mode === "abs" ? v : v / hh * 100; }
+  function activeDoors() { return DOORS.filter(function (d) { return state.layers[d]; }); }
+
+  // ---------- labels and formatting ----------
+  function cutoffCompact() { return "over " + INCOME_STOP_LABELS[state.cutoff]; }
+  function doorLabel(d) { return d === "money" ? DOOR_LABEL.money + " (" + cutoffCompact() + ")" : DOOR_LABEL[d]; }
+  var fmtInt = d3.format(",.0f");
+  function fmtAbs(v) { return v >= 100 ? fmtInt(Math.round(v / 10) * 10) : fmtInt(v); }
+  function fmtPct(v) {
+    v = Math.max(0, Math.min(100, v));
+    var f = v >= 10 ? ".0f" : v >= 1 ? ".1f" : v >= 0.1 ? ".2f" : ".3f";
+    return d3.format(f)(v) + "%";
+  }
+  function fmtVal(v) { return state.mode === "abs" ? fmtAbs(v) : fmtPct(v); }
+  function pct(x) { return d3.format(".1%")(x); }
+
+  // ---------- color ----------
+  function scaleSpec() { return SCALES[state.mode]; }
+  function layerScale() {
+    var s = scaleSpec();
+    return d3.scaleLinear().domain(s.domain).range([0, 1]).clamp(true);
+  }
+  // ramp: white -> #61BCF6 (t = .5) -> #12256E, plain sRGB like a CSS linear-gradient; stop colors are theme tokens
+  function layerRamp() {
+    var rs = getComputedStyle(document.documentElement);
+    var g = function (k, fb) { return rs.getPropertyValue(k).trim() || fb; };
+    return d3.scaleLinear().domain([0, 0.5, 1])
+      .range([g("--ramp0", "#FFFFFF"), g("--ramp-mid", "#61BCF6"), g("--ramp1", "#12256E")])
+      .interpolate(d3.interpolateRgb).clamp(true);
+  }
+
+  // Per map (main: 47 units, inset: 23 wards): value, rank, fixed position t, and the shown position after contrast.
+  // Contrast s in [0,1]: t_s = (t - tmin)/(tmax - tmin) over THAT map's units; shown = (1 - s) t + s t_s.
+  var layerInfo = { byKey: {}, active: [] };
+  function computeLayerValues() {
+    var sc = layerScale(), floor = scaleSpec().domain[0], s = state.contrast / 100, info = {};
+    [["main", mainUnits], ["inset", insetUnits]].forEach(function (m) {
+      var rows = m[1].map(function (u) { var v = toMode(u.households, uAfterLayers(u)); return { id: u.id, v: v, t: sc(Math.max(floor, v)) }; });
+      var tmin = d3.min(rows, function (x) { return x.t; }), tmax = d3.max(rows, function (x) { return x.t; });
+      rows.sort(function (a, b) { return b.v - a.v || (a.id < b.id ? -1 : 1); });
+      rows.forEach(function (x, i) {
+        var ts = tmax > tmin ? (x.t - tmin) / (tmax - tmin) : x.t;
+        info[m[0] + ":" + x.id] = { rank: i + 1, of: rows.length, v: x.v, t: x.t, shown: (1 - s) * x.t + s * ts };
+      });
+    });
+    layerInfo = { byKey: info, active: activeDoors() };
+  }
+  function layerOf(id) { return layerInfo.byKey[(isWard(id) ? "inset:" : "main:") + id]; }
+
+  // ---------- nearest dealer (great circle from the unit's centroid) ----------
+  // All 69 DEALERS (Porsche Centers, satellites, pre-owned, service, studio, experience) are drawn and used for distances.
+  function haversine(a, b) {
+    var R = 6371, toR = Math.PI / 180;
+    var dLat = (b[1] - a[1]) * toR, dLng = (b[0] - a[0]) * toR;
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a[1] * toR) * Math.cos(b[1] * toR) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+  mainFeatures.concat(wardFeatures).forEach(function (f) {
+    var c = d3.geoCentroid(f), best = null;
+    if (f.id === TOKYO_ID && f.geometry.type === "MultiPolygon") {
+      // whole-Tokyo outline includes the Izu/Ogasawara islands; use the mainland polygon so the centroid stays on land
+      var big = f.geometry.coordinates.map(function (p) { return { type: "Polygon", coordinates: p }; })
+        .sort(function (a, b) { return d3.geoArea(b) - d3.geoArea(a); })[0];
+      c = d3.geoCentroid(big);
+    }
+    DEALERS.forEach(function (d) { var km = haversine(c, [d.lng, d.lat]); if (!best || km < best.km) best = { km: km, d: d }; });
+    units[f.id].nearest = best;
+  });
+
+  // ---------- SVG build ----------
+  var proj = d3.geoMercator().fitExtent([[18, 50], [768, 778]], { type: "FeatureCollection", features: pieceFeatures });
+  var path = d3.geoPath(proj);
+  var projI = d3.geoMercator().fitExtent([[INSET.x + 14, INSET.y + 34], [INSET.x + INSET.w - 14, INSET.y + INSET.h - 14]], { type: "FeatureCollection", features: wardFeatures });
+  var pathI = d3.geoPath(projI);
+
+  var main = d3.select("#main-view");
+  var gBase = main.append("g"), gLayers = main.append("g").attr("class", "layer"), gLoc = main.append("g");
+  var gDealers = main.append("g"), gHl = main.append("g");
+
+  // locator box around the wards and a leader line to the inset
+  var wb = path.bounds({ type: "FeatureCollection", features: wardFeatures });
+  gLoc.append("rect").attr("class", "locator").attr("x", wb[0][0] - 3).attr("y", wb[0][1] - 3)
+    .attr("width", wb[1][0] - wb[0][0] + 6).attr("height", wb[1][1] - wb[0][1] + 6);
+  gLoc.append("line").attr("class", "locator").attr("x1", wb[1][0] + 3).attr("y1", wb[1][1] + 3).attr("x2", INSET.x + 40).attr("y2", INSET.y);
+
+  d3.select("#inset-clip-rect").attr("x", INSET.x).attr("y", INSET.y).attr("width", INSET.w).attr("height", INSET.h);
+  var inset = d3.select("#inset-view");
+  inset.append("rect").attr("class", "inset-groove").attr("x", INSET.x - 2).attr("y", INSET.y - 2).attr("width", INSET.w + 4).attr("height", INSET.h + 4);
+  inset.append("rect").attr("class", "inset-frame").attr("x", INSET.x + 0.5).attr("y", INSET.y + 0.5).attr("width", INSET.w - 1).attr("height", INSET.h - 1);
+  var insetBody = inset.append("g").attr("clip-path", "url(#inset-clip)");
+  var insetTopEdge = function () {   // drawn after the body so the bright top edge and sheen sit on top
+    inset.append("rect").attr("class", "inset-sheen").attr("x", INSET.x + 1).attr("y", INSET.y + 1).attr("width", INSET.w - 2).attr("height", 6);
+    inset.append("line").attr("class", "inset-top").attr("x1", INSET.x).attr("x2", INSET.x + INSET.w).attr("y1", INSET.y + 0.5).attr("y2", INSET.y + 0.5);
+  };
+  var gCtxI = insetBody.append("g"), gBaseI = insetBody.append("g"), gLayersI = insetBody.append("g").attr("class", "layer");
+  var gDealersI = insetBody.append("g"), gHlI = insetBody.append("g");
+  insetTopEdge();
+  inset.append("text").attr("class", "inset-label").attr("x", INSET.x + 12).attr("y", INSET.y + 22).text("Tokyo 23 wards (enlarged)");
+
+  gCtxI.selectAll("path").data(pieceFeatures.filter(function (f) { return !isWard(f.id); })).join("path").attr("class", "context").attr("d", pathI);
+
+  function regionPaths(g, pth, feats) {
+    return g.selectAll("path").data(feats).join("path").attr("class", "region").attr("d", pth).attr("data-id", function (f) { return f.id; });
+  }
+  var basePaths = regionPaths(gBase, path, mainFeatures);
+  var basePathsI = regionPaths(gBaseI, pathI, wardFeatures);
+  var layerSel = gLayers.selectAll("path").data(mainFeatures).join("path").attr("d", path).attr("data-id", function (f) { return f.id; });
+  var layerSelI = gLayersI.selectAll("path").data(wardFeatures).join("path").attr("d", pathI);
+
+  var hlMain = gHl.append("path").attr("class", "hl");
+  var hlInset = gHlI.append("path").attr("class", "hl");
+
+  // dealers: dots on both maps
+  function dealerTitle(d) { return d.name_en + " (" + d.city + ")"; }
+  gDealers.selectAll("circle").data(DEALERS).join("circle").attr("class", "dealer").attr("r", 3.2)
+    .attr("cx", function (d) { return proj([d.lng, d.lat])[0]; }).attr("cy", function (d) { return proj([d.lng, d.lat])[1]; })
+    .append("title").text(dealerTitle);
+  gDealersI.selectAll("circle").data(DEALERS).join("circle").attr("class", "dealer").attr("r", 4.5)
+    .attr("cx", function (d) { return projI([d.lng, d.lat])[0]; }).attr("cy", function (d) { return projI([d.lng, d.lat])[1]; })
+    .append("title").text(dealerTitle);
+
+  // ---------- tooltip: hover / pin ----------
+  var mapbox = document.getElementById("mapbox");
+  var tip = document.getElementById("tip");
+
+  function setHighlight(id) {
+    var f = id ? geoById[id] : null, ward = isWard(id);
+    hlMain.attr("d", f ? path(ward ? geoById[TOKYO_ID] : f) : null);   // a ward highlights Tokyo on the main map
+    hlInset.attr("d", f && ward ? pathI(f) : null);
+  }
+  function tipHTML(u) {
+    var rows = "", summed = u.pieces.length > 1, li = layerOf(u.id), on = layerInfo.active.length;
+    rows += "<tr><td>Households" + (summed ? " (sum of 24 pieces)" : "") + "</td><td class='n'>" + fmtAbs(u.households) + "</td></tr>";
+    DOORS.forEach(function (d, i) {
+      var tag = d === "money" ? (u.group === "ward" && state.cutoff === 2 ? " · estimated" : "") : " · placeholder";
+      rows += "<tr" + (i === 0 ? " class='sep'" : "") + "><td>" + doorLabel(d) + (state.layers[d] ? "" : " <span class='off'>(off)</span>") +
+        (summed ? " <span class='off'>(weighted)</span>" : "") + (tag ? " <span class='off'>" + tag + "</span>" : "") + "</td><td class='n'>" + pct(uRate(u, d)) + "</td></tr>";
+      if (d === "money") {
+        // all three real income shares (ward over-20m estimated)
+        var ms = MONEY_KEYS.map(function (k) { return pct(summed ? d3.sum(u.pieces, function (r) { return r.households * r.money[k]; }) / u.households : u.pieces[0].money[k]); });
+        rows += "<tr><td><span class='off'>over ¥10m / ¥15m / ¥20m</span></td><td class='n'><span class='off'>" + ms.join(" / ") + "</span></td></tr>";
+      }
+    });
+    rows += "<tr class='sep'><td>Households passing active doors</td><td class='n'>" + (on ? fmtVal(li.v) : "n/a") + "</td></tr>";
+    if (on) {
+      rows += "<tr><td>Rank</td><td class='n'>" + li.rank + " of " + li.of + (li.of === 23 ? " wards" : " prefectures") + "</td></tr>";
+      if (state.contrast > 0) rows += "<tr><td>Color position</td><td class='n'>fixed " + li.t.toFixed(2) + " → shown " + li.shown.toFixed(2) + "</td></tr>";
+    }
+    var nd = u.nearest;
+    rows += "<tr class='sep'><td>Nearest Porsche location<br><span class='off'>" + nd.d.name_en.replace(/^Porsche (Center )?/, "") + "</span></td><td class='n'>" + fmtInt(nd.km) + " km</td></tr>";
+    return "<h4>" + u.name_en + "</h4><div class='ja'>" + u.name_ja + "</div><table>" + rows + "</table>" +
+      "<div class='pinhint'>" + (state.pinned ? "Pinned. Esc or click elsewhere to unpin." : "Click to pin.") + "</div>";
+  }
+  function placeTip(evt) {
+    var b = mapbox.getBoundingClientRect();
+    var x = evt ? evt.clientX - b.left : b.width / 2, y = evt ? evt.clientY - b.top : b.height / 2;
+    var tw = tip.offsetWidth, th = tip.offsetHeight, left = x + 14, top = y + 14;
+    if (left + tw > b.width - 4) left = x - tw - 14;
+    if (left < 4) left = 4;
+    if (top + th > b.height - 4) top = y - th - 14;
+    if (top < 4) top = 4;
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  function showTip(id, evt) {
+    tip.innerHTML = tipHTML(units[id]);
+    tip.classList.toggle("pinned", state.pinned === id);
+    tip.hidden = false;
+    placeTip(evt);
+  }
+  function clearTip() { state.pinned = null; state.hover = null; setHighlight(null); tip.hidden = true; tip.classList.remove("pinned"); }
+
+  function bindRegion(sel) {
+    sel.on("pointerenter", function (evt, f) {
+      if (state.pinned) return;
+      state.hover = f.id; setHighlight(f.id); showTip(f.id, evt);
+    }).on("pointermove", function (evt, f) {
+      if (!state.pinned && state.hover === f.id) placeTip(evt);
+    }).on("pointerleave", function (evt, f) {
+      if (!state.pinned && state.hover === f.id) clearTip();
+    }).on("click", function (evt, f) {
+      evt.stopPropagation();
+      if (state.pinned === f.id) { clearTip(); return; }
+      state.pinned = f.id; state.hover = f.id; setHighlight(f.id); showTip(f.id, evt);
+    });
+  }
+  bindRegion(basePaths); bindRegion(basePathsI);
+  document.addEventListener("click", function (evt) { if (state.pinned && !tip.contains(evt.target)) clearTip(); });
+  document.addEventListener("keydown", function (evt) { if (evt.key === "Escape" && state.pinned) clearTip(); });
+
+  // ---------- rendering ----------
+  // Numbers tween only within the same value mode (doors, cutoff). A mode or contrast change snaps.
+  var snapNext = false;
+  function tweenText(el, value, fmt) {
+    var sel = d3.select(el), from = el._v == null ? value : el._v, sameMode = el._m === state.mode;
+    el._v = value; el._m = state.mode;
+    if (!DUR || snapNext || !sameMode) { sel.interrupt(); sel.text(fmt(value)); return; }
+    sel.interrupt().transition().duration(DUR).tween("text", function () {
+      var i = d3.interpolateNumber(from, value);
+      return function (t) { el.textContent = fmt(i(t)); };
+    });
+  }
+
+  function renderMap() {
+    computeLayerValues();
+    var none = !layerInfo.active.length, ramp = layerRamp();
+    [layerSel, layerSelI].forEach(function (sel) {
+      // hidden map keeps its last colours so the fade does not pass through the dark "households only" colours
+      if (!none) sel.style("fill", function (f) { return ramp(layerOf(f.id).shown); });
+      sel.style("fill-opacity", none ? 0 : 1);
+    });
+    // data-t / data-shown expose the color math for testing
+    layerSel.attr("data-t", function (f) { return none ? null : layerOf(f.id).t.toFixed(4); })
+      .attr("data-shown", function (f) { return none ? null : layerOf(f.id).shown.toFixed(4); });
+    gDealers.attr("display", state.dealers ? null : "none");
+    gDealersI.attr("display", state.dealers ? null : "none");
+  }
+
+  function renderPanel() {
+    var pctMode = state.mode === "pct";
+    var totalHH = d3.sum(REGIONS, function (r) { return r.households; });
+    var total = d3.sum(REGIONS, afterLayers);
+    var asMode = function (v, hh) { return pctMode ? v / hh * 100 : v; };
+
+    document.getElementById("p-total-k").textContent = pctMode ? "Passing, % of households, Japan" : "Households passing, Japan";
+    tweenText(document.getElementById("p-total"), asMode(total, totalHH), fmtVal);
+
+    // top 8 of the 47 prefecture units (Tokyo summed)
+    var ranked = mainUnits.map(function (u) { return { u: u, v: toMode(u.households, uAfterLayers(u)) }; })
+      .sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
+    var maxV = ranked.length ? ranked[0].v : 1;
+    document.getElementById("rank-title").textContent = "Top 8 prefectures" + (pctMode ? " (%)" : "");
+    var li = d3.select("#rank").selectAll("li").data(ranked).join(function (enter) {
+      var l = enter.append("li");
+      l.append("span").attr("class", "i"); l.append("span").attr("class", "nm"); l.append("span").attr("class", "rv");
+      l.append("span").attr("class", "bar").append("i");
+      return l;
+    });
+    li.select(".i").text(function (d, i) { return i + 1; });
+    li.select(".nm").text(function (d) { return d.u.short + (d.u.group === "tokyo" ? " (summed)" : ""); }).attr("title", function (d) { return d.u.name_en + " " + d.u.name_ja; });
+    li.select(".rv").each(function (d) { tweenText(this, d.v, fmtVal); });
+    li.select(".bar i").style("width", function (d) { return (maxV ? d.v / maxV * 100 : 0) + "%"; });
+  }
+
+  function renderControls() {
+    var cin = document.getElementById("cutoff-income");
+    cin.value = String(state.cutoff);
+    cin.setAttribute("aria-valuetext", INCOME_STOP_LABELS[state.cutoff]);
+    document.getElementById("cutoff-value").textContent = INCOME_STOP_LABELS[state.cutoff];
+    var ct = document.getElementById("contrast");
+    ct.value = String(state.contrast);
+    ct.setAttribute("aria-valuetext", state.contrast + "%");
+    document.getElementById("contrast-value").textContent = state.contrast + "%";
+    document.getElementById("mode-" + state.mode).checked = true;
+    document.querySelectorAll(".lbl-money").forEach(function (el) { el.textContent = "income " + cutoffCompact(); });
+  }
+
+  function render(snap) {
+    snapNext = !!snap;
+    renderControls(); renderMap(); renderPanel();
+    snapNext = false;
+    var id = state.pinned || state.hover;
+    if (id && !tip.hidden) tip.innerHTML = tipHTML(units[id]);
+  }
+
+  // ---------- control wiring ----------
+  DOORS.forEach(function (d) {
+    document.getElementById("layer-" + d).addEventListener("change", function (evt) { state.layers[d] = evt.target.checked; render(); });
+  });
+  document.querySelectorAll("input[name=mode]").forEach(function (el) {
+    el.addEventListener("change", function () { state.mode = el.value; render(true); });
+  });
+  document.getElementById("show-dealers").addEventListener("change", function (evt) { state.dealers = evt.target.checked; render(); });
+  document.getElementById("cutoff-income").addEventListener("input", function (evt) {
+    state.cutoff = Math.max(0, Math.min(2, Math.round(+evt.target.value)));
+    save(KEYS.cutoff, state.cutoff); render();
+  });
+  document.getElementById("contrast").addEventListener("input", function (evt) {
+    state.contrast = Math.max(0, Math.min(100, Math.round(+evt.target.value / 5) * 5));
+    save(KEYS.contrast, state.contrast); render(true);
+  });
+
+  render();
+})();
+</script>

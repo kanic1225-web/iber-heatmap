@@ -1,0 +1,17 @@
+HTTP/2 200 
+content-type: application/octet-stream
+cache-control: private
+accept-ranges: bytes
+x-zen-fury: 182bca2180e8e74ca9b4f7f2fcf066f7849a81d0
+server: ZENEDGE
+date: Sat, 31 Oct 2026 13:27:35 GMT
+vary: Accept-Encoding
+x-frame-options: SAMEORIGIN
+x-cache-status: NOTCACHED
+x-content-type-options: nosniff
+strict-transport-security: max-age=0
+content-disposition: attachment; filename*=UTF-8''b01_01.xlsx
+x-xss-protection: 1; mode=block
+x-cache: MISS
+x-cdn: Served-By-Zenedge
+

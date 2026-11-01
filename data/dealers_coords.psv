@@ -1,0 +1,73 @@
+# Source: porsche.com/jp/ja-JP/dealersearch/ (Astro island props "initialResults"), read 2026-10-31 in Chrome.
+# Row order is identical to dealers_raw.tsv (same page, same order). Join by index.
+# idx|lat|lng|type|porschePartnerNo|name_en
+# type: C=PORSCHE_CENTER S=SATELLITE_PORSCHE_CENTER P=PORSCHE_PRE_OWNED_CAR_CENTER A=PORSCHE_APPROVED_AND_SERVICE_CENTER X=PORSCHE_EXPERIENCE_CENTER V=PORSCHE_SERVICE_CENTER T=PORSCHE_STUDIO
+0|35.71441|139.74016|P|8233056|Porsche Pre-owned Car Center Koishikawa
+1|34.706389|135.463056|P|8235027|PC Sakai Nishi Osaka Pre-Owned Car Center
+2|35.120556|138.853611|P|8234010|PC Shizuoka Numazu Pre-owned Car Center
+3|35.45788|139.62794|P|8233044|Porsche Pre-owned Car Center Minatomirai
+4|35.051944|135.785556|P|8235024|PC Kyoto Pre-owned Car Center
+5|35.17174|137.03771|P|8234012|PC Ueda Nagakute Pre-Owned Car Center
+6|34.68822|135.26775|P|8235016|PC Kobe Pre-owned Car Center
+7|35.639444|139.635278|A|8233039|Porsche Approved & Service Center Setagaya
+8|35.68421|139.6285|A|8233052|Porsche Approved & Service Center Hamadayama
+9|33.57503|130.3164|A|8237008|Porsche Approved & Service Center Fukuoka West
+10|34.83641|135.48805|P|8235025|PC Kita Osaka Pre-owned Car Center
+11|35.161934|136.886553|A|8234011|Porsche Approved & Service Center Nagoya
+12|35.36285|139.99735|X|8230028|Porsche Experience Center Tokyo
+13|35.65344|139.81229|V|8233054|Porsche Service Center Tokyo Bay Tatsumi
+14|35.66615|139.76116|T|8233051|Porsche Studio Ginza
+15|35.6817|139.77533|T|8233050|Porsche Studio Nihombashi
+16|34.58806|135.48774|C|8235026|Porsche Center Sakai
+17|36.090278|140.084722|C|8233023|Porsche Center Tsukuba
+18|35.45726|139.62777|C|8233033|Porsche Center Minatomirai
+19|36.53534|139.886244|S|8233053|Porsche Center Utsunomiya
+20|35.835833|139.665|C|8233016|Porsche Center Urawa
+21|35.563056|139.561389|C|8233029|Porsche Center Yokohama Aoba
+22|34.932722|137.148694|C|8234008|Porsche Center Okazaki
+23|34.62855|133.92089|C|8236003|Porsche Center Okayama
+24|34.614462|133.94064|P|8236007|PC Okayama Pre-Owned Car Center
+25|35.40152|136.72625|S|8234013|Porsche Center Gifu
+26|34.96857|135.75649|C|8235009|Porsche Center Kyoto
+27|36.53888|136.60043|C|8235002|Porsche Center Kanazawa
+28|32.7625|130.691111|C|8237004|Porsche Center Kumamoto
+29|37.44|140.3375|C|8232002|Porsche Center Koriyama
+30|34.39264|132.3664|C|8236006|Porsche Center Hiroshima
+31|36.362778|139.018889|C|8233025|Porsche Center Takasaki Maebashi
+32|34.304028|134.076444|C|8236002|Porsche Center Takamatsu
+33|33.953056|133.415556|P|8236008|PC Takamatsu Shikoku Chuo Pre-Owned Car Center
+34|35.63651|139.73876|C|8233055|Porsche Center Takanawa
+35|43.101944|141.345278|C|8231002|Porsche Center Sapporo
+36|34.161667|131.489722|C|8236004|Porsche Center Yamaguchi
+37|34.989667|136.639|C|8234009|Porsche Center Yokkaichi
+38|35.024722|135.989722|C|8235023|Porsche Center Shiga
+39|31.52834|130.52895|C|8237007|Porsche Center Kagoshima
+40|36.161111|137.951667|C|8233008|Porsche Center Matsumoto
+41|35.324444|139.44|S|8233034|Porsche Center Shonan
+42|35.13108|136.98158|C|8234007|Porsche Center Ueda
+43|37.898333|139.023889|C|8233014|Porsche Center Niigata
+44|34.686389|135.193056|C|8235015|Porsche Center Kobe
+45|34.73841|135.33587|C|8235028|Porsche Center Nishinomiya
+46|35.66636|139.71387|C|8233020|Porsche Center Aoyama
+47|35.00961|138.44794|C|8234001|Porsche Center Shizuoka
+48|38.332778|140.891111|C|8232003|Porsche Center Sendai
+49|35.632222|140.083889|C|8233045|Porsche Center Chiba
+50|35.8903|139.44823|C|8233015|Porsche Center Kawagoe
+51|35.78538|139.8026|C|8233043|Porsche Center Adachi
+52|34.676111|135.490833|C|8235018|Porsche Center Naka Osaka
+53|34.675278|135.489722|P|8235018|PC Naka Osaka Pre-Owned Car Center
+54|35.662639|139.583417|C|8233038|Porsche Center Chofu
+55|36.60745|138.16659|S|8233047|Porsche Center Nagano
+56|34.683889|135.794444|C|8235022|Porsche Center Nara
+57|35.901967|139.951815|C|8233022|Porsche Center Kashiwanoha
+58|35.68466|139.34655|C|8233042|Porsche Center Hachioji
+59|35.284722|136.829444|C|8234006|Porsche Center Owari Gifu
+60|34.844167|134.629722|C|8236005|Porsche Center Himeji
+61|34.72153|137.76801|S|8234002|Porsche Center Hamamatsu
+62|35.68246|139.63178|C|8233035|Porsche Center Hamadayama
+63|36.068056|136.242778|C|8235030|Porsche Center Fukui
+64|33.64848|130.43662|C|8237006|Porsche Center Fukuoka
+65|34.82989|135.48725|C|8235017|Porsche Center Kita Osaka
+66|35.160278|136.917778|C|8234003|Porsche Center Nagoya
+67|35.638889|139.704167|C|8233026|Porsche Center Meguro
+68|35.76354|139.66509|C|8233041|Porsche Center Nerima
