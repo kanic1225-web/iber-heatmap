@@ -52,6 +52,14 @@ header.top h1 { font-size: 26px; letter-spacing: -.01em; }
 .crow { display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 0; min-height: 52px; border-top: 1px solid var(--line-soft); }
 .crow:first-child { border-top: 0; }
 .clabel { white-space: nowrap; }
+/* label + info icon (Contrast row): icon 6px after the label text, tooltip card above it */
+.lwrap { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.info { flex: none; display: inline-flex; color: var(--muted); cursor: help; line-height: 0; }
+.info:hover, .info:focus-visible, .info[aria-expanded="true"] { color: var(--accent); }
+.info:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.infotip { position: absolute; z-index: 6; left: 0; bottom: calc(100% + 8px); width: 260px; max-width: calc(100vw - 32px);
+  background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 0; box-shadow: 0 0 0 2px var(--groove), 0 6px 14px var(--tip-shadow);
+  padding: 9px 11px; font-size: 12.5px; line-height: 1.45; font-weight: 400; text-transform: none; letter-spacing: 0; white-space: normal; }
 .seg { display: inline-flex; flex-wrap: wrap; justify-self: start; gap: 2px; padding: 2px; background: var(--line-soft); border: 1px solid var(--line); border-radius: 0; }
 .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
 .seg label { padding: 7px 8px; cursor: pointer; color: var(--text); font-size: 13px; border: 1px solid transparent; border-radius: 0; user-select: none; transition: background .15s, color .15s; }
@@ -68,6 +76,15 @@ header.top h1 { font-size: 26px; letter-spacing: -.01em; }
 .switch input:checked + .track { background: var(--switch-on); }
 .switch input:checked + .track::after { transform: translateX(16px); }
 .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* placeholder door rows: switch on the left, "type your own" national % box at the right edge, one line */
+.dline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dline .switch { min-width: 0; }
+.dline .stext { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.own { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+.own input { width: 56px; height: 24px; margin: 0; padding: 0 6px; font: inherit; color: var(--fg); text-align: right; font-variant-numeric: tabular-nums;
+  background: var(--card); border: 1px solid var(--rim-side); box-shadow: 0 0 0 2px var(--groove); border-radius: 0; -moz-appearance: textfield; appearance: textfield; }
+.own input::-webkit-inner-spin-button, .own input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.own input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .slider { min-width: 0; width: 100%; }
 .slider-head { font-size: 13px; color: var(--text); margin-bottom: 4px; }
 .val { font-size: 15px; color: var(--fg); }
@@ -148,7 +165,9 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
 .rank .bar { grid-column: 2 / 4; height: 6px; background: var(--bar-track); border-radius: 999px; overflow: hidden; container-type: inline-size; }
 .rank .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--bar-from), var(--accent)) left center / 100cqw 100% no-repeat; border-radius: 999px; transition: width .45s ease; }
 .hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
-footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 10px; }
+.foot { display: flex; align-items: baseline; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 10px; }
+.linkbtn { padding: 0; border: 0; background: none; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.linkbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 560px) {
   header.top h1 { font-size: 22px; }
   .stat .v { font-size: 26px; }
@@ -167,15 +186,15 @@ footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1
   <section class="card controls" aria-label="Map controls">
       <div class="crow">
         <label class="clabel" for="layer-park">Can park</label>
-        <label class="switch"><input type="checkbox" id="layer-park" checked><span class="track" aria-hidden="true"></span><span class="stext">has a parking space</span></label>
+        <div class="dline"><label class="switch"><input type="checkbox" id="layer-park" checked><span class="track" aria-hidden="true"></span><span class="stext">has parking</span></label><span class="own"><input type="number" id="own-park" min="0" max="100" step="1" inputmode="decimal" aria-label="Can park, national share, type your own"><span aria-hidden="true">%</span></span></div>
       </div>
       <div class="crow">
         <label class="clabel" for="layer-charge">Can charge</label>
-        <label class="switch"><input type="checkbox" id="layer-charge" checked><span class="track" aria-hidden="true"></span><span class="stext">charger possible</span></label>
+        <div class="dline"><label class="switch"><input type="checkbox" id="layer-charge" checked><span class="track" aria-hidden="true"></span><span class="stext">charger OK</span></label><span class="own"><input type="number" id="own-charge" min="0" max="100" step="1" inputmode="decimal" aria-label="Can charge, national share, type your own"><span aria-hidden="true">%</span></span></div>
       </div>
       <div class="crow">
         <label class="clabel" for="layer-timing">Renewal soon</label>
-        <label class="switch"><input type="checkbox" id="layer-timing" checked><span class="track" aria-hidden="true"></span><span class="stext">within 24 months</span></label>
+        <div class="dline"><label class="switch"><input type="checkbox" id="layer-timing" checked><span class="track" aria-hidden="true"></span><span class="stext">in 24 months</span></label><span class="own"><input type="number" id="own-timing" min="0" max="100" step="1" inputmode="decimal" aria-label="Renewal soon, national share, type your own"><span aria-hidden="true">%</span></span></div>
       </div>
       <div class="crow">
         <label class="clabel" for="layer-money">Can pay</label>
@@ -201,7 +220,7 @@ footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1
         </div>
       </div>
       <div class="crow">
-        <label class="clabel" for="contrast">Contrast</label>
+        <span class="lwrap"><label class="clabel" for="contrast">Contrast</label><span class="info" id="contrast-info" tabindex="0" role="button" aria-label="What contrast does" aria-describedby="contrast-tip" aria-expanded="false"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle><circle cx="7" cy="4.1" r="1" fill="currentColor"></circle><rect x="6.25" y="6" width="1.5" height="4.6" fill="currentColor"></rect></svg></span><span class="infotip" id="contrast-tip" role="tooltip" hidden>At 0%, colours sit on a fixed scale (0 to 2,000,000 households, or 0 to 40%), so you can compare views with different doors or income cutoffs. At 100%, the palest area on each map turns white and the darkest turns navy: you see the biggest differences, but colours can't be compared across settings. In between blends the two.</span></span>
         <div class="slider">
           <div class="slider-head"><strong id="contrast-value" class="val">100%</strong></div>
           <input type="range" id="contrast" min="0" max="100" step="5" value="100" aria-valuetext="100%">
@@ -240,7 +259,7 @@ footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1
     </section>
   </div>
 
-  <footer id="footer">(Can park, Can charge, Renewal soon are mock data)</footer>
+  <div class="foot"><footer id="footer">(Can park, Can charge, Renewal soon are mock data; type your own in the boxes)</footer><button type="button" class="linkbtn" id="own-reset" hidden>Reset</button></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -459,8 +478,45 @@ const GEO = {"type":"FeatureCollection","features":[{"type":"Feature","id":"JP-0
   // money: the real share over the selected income cutoff (m10 / m15 / m20); park, charge and timing: placeholder base rates
   var MONEY_KEYS = ["m10", "m15", "m20"];
   function rate(r, door) {
-    return door === "money" ? r.money[MONEY_KEYS[state.cutoff]] : r[door].base;
+    if (door === "money") return r.money[MONEY_KEYS[state.cutoff]];
+    var k = OWN_K[door];
+    return k == null ? r[door].base : Math.min(1, r[door].base * k);
   }
+
+  // ---------- "type your own" national shares for the placeholder doors ----------
+  // A typed national % V scales every region's base rate by one factor k (capped at 100%), k found by bisection
+  // so the households-weighted national average equals V. Reflected in the page address (?park=60&charge=40).
+  var OWN_DOORS = ["park", "charge", "timing"];
+  var OWN_K = { park: null, charge: null, timing: null }, OWN_V = { park: null, charge: null, timing: null };
+  var NAT_HH = d3.sum(REGIONS, function (r) { return r.households; });
+  function natAvg(door, k) { return d3.sum(REGIONS, function (r) { return r.households * Math.min(1, r[door].base * k); }) / NAT_HH; }
+  var OWN_DEFAULT = {};
+  OWN_DOORS.forEach(function (d) { OWN_DEFAULT[d] = natAvg(d, 1) * 100; });
+  function solveK(door, target) {
+    if (target <= 0) return 0;
+    var lo = 0, hi = 1;
+    while (natAvg(door, hi) < target && hi < 1e6) { lo = hi; hi *= 2; }
+    for (var i = 0; i < 40; i++) { var mid = (lo + hi) / 2; if (natAvg(door, mid) < target) lo = mid; else hi = mid; }
+    return (lo + hi) / 2;
+  }
+  // v: typed percentage (number) or null; returns true when an override is active
+  function setOwn(door, v) {
+    if (v == null || !isFinite(v) || Math.abs(v - OWN_DEFAULT[door]) <= 0.5) { OWN_K[door] = null; OWN_V[door] = null; return false; }
+    v = Math.max(0, Math.min(100, v));
+    OWN_V[door] = v; OWN_K[door] = solveK(door, v / 100);
+    return true;
+  }
+  function ownActive() { return OWN_DOORS.some(function (d) { return OWN_K[d] != null; }); }
+  function fmtOwn(v) { return String(Math.round(v * 10) / 10); }
+  function syncOwnURL() {
+    try {
+      var p = new URLSearchParams(location.search);
+      OWN_DOORS.forEach(function (d) { if (OWN_V[d] != null) p.set(d, fmtOwn(OWN_V[d])); else p.delete(d); });
+      var qs = p.toString();
+      history.replaceState(history.state, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+    } catch (e) {}
+  }
+  function syncOwnReset() { document.getElementById("own-reset").hidden = !ownActive(); }
   function afterLayers(r) { var v = r.households; DOORS.forEach(function (d) { if (state.layers[d]) v *= rate(r, d); }); return v; }
   // unit versions: sums over the unit's pieces (identical to the region functions for single-piece units)
   function uAfterLayers(u) { return d3.sum(u.pieces, afterLayers); }
@@ -599,7 +655,7 @@ const GEO = {"type":"FeatureCollection","features":[{"type":"Feature","id":"JP-0
     var rows = "", summed = u.pieces.length > 1, li = layerOf(u.id), on = layerInfo.active.length;
     rows += "<tr><td>Households" + (summed ? " (sum of 24 pieces)" : "") + "</td><td class='n'>" + fmtAbs(u.households) + "</td></tr>";
     DOORS.forEach(function (d, i) {
-      var tag = d === "money" ? (u.group === "ward" && state.cutoff === 2 ? " · estimated" : "") : " · placeholder";
+      var tag = d === "money" ? (u.group === "ward" && state.cutoff === 2 ? " · estimated" : "") : OWN_K[d] != null ? " · your number" : " · placeholder";
       rows += "<tr" + (i === 0 ? " class='sep'" : "") + "><td>" + doorLabel(d) + (state.layers[d] ? "" : " <span class='off'>(off)</span>") +
         (summed ? " <span class='off'>(weighted)</span>" : "") + (tag ? " <span class='off'>" + tag + "</span>" : "") + "</td><td class='n'>" + pct(uRate(u, d)) + "</td></tr>";
       if (d === "money") {
@@ -745,6 +801,42 @@ const GEO = {"type":"FeatureCollection","features":[{"type":"Feature","id":"JP-0
     state.contrast = Math.max(0, Math.min(100, Math.round(+evt.target.value / 5) * 5));
     save(KEYS.contrast, state.contrast); render(true);
   });
+  // own-share boxes: defaults shown on load, ?park=&charge=&timing= applied, typing updates the map
+  var urlParams; try { urlParams = new URLSearchParams(location.search); } catch (e) { urlParams = null; }
+  OWN_DOORS.forEach(function (d) {
+    var box = document.getElementById("own-" + d);
+    box.value = String(Math.round(OWN_DEFAULT[d]));
+    var q = urlParams && urlParams.get(d);
+    if (q != null && q.trim() !== "" && isFinite(+q) && setOwn(d, +q)) box.value = fmtOwn(OWN_V[d]);
+    box.addEventListener("input", function () {
+      setOwn(d, box.value === "" ? null : +box.value);
+      syncOwnURL(); syncOwnReset(); render();
+    });
+    box.addEventListener("keydown", function (evt) { if (evt.key === "Enter") evt.preventDefault(); });
+  });
+  document.getElementById("own-reset").addEventListener("click", function () {
+    OWN_DOORS.forEach(function (d) { setOwn(d, null); document.getElementById("own-" + d).value = String(Math.round(OWN_DEFAULT[d])); });
+    syncOwnURL(); syncOwnReset(); render();
+  });
+  if (ownActive()) syncOwnURL();
+  syncOwnReset();
+
+  // contrast info icon: hover / focus shows the explanation, leave / blur / Escape hides it, tap toggles it
+  (function () {
+    var ic = document.getElementById("contrast-info"), ct = document.getElementById("contrast-tip"), touching = false;
+    function show(v) { ct.hidden = !v; ic.setAttribute("aria-expanded", v ? "true" : "false"); }
+    ic.addEventListener("mouseenter", function () { show(true); });
+    ic.addEventListener("mouseleave", function () { if (document.activeElement !== ic) show(false); });
+    ic.addEventListener("pointerdown", function (evt) { touching = evt.pointerType !== "mouse"; });
+    ic.addEventListener("focus", function () { if (!touching) show(true); });
+    ic.addEventListener("blur", function () { show(false); });
+    ic.addEventListener("click", function (evt) { evt.stopPropagation(); if (touching) show(ct.hidden); touching = false; });
+    ic.addEventListener("keydown", function (evt) {
+      if (evt.key === "Escape") show(false);
+      else if (evt.key === "Enter" || evt.key === " ") { evt.preventDefault(); show(ct.hidden); }
+    });
+    document.addEventListener("click", function (evt) { if (!ct.hidden && !ic.contains(evt.target)) show(false); });
+  })();
 
   render();
 })();
