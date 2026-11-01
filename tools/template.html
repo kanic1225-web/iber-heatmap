@@ -168,6 +168,21 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
 .foot { display: flex; align-items: baseline; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 10px; }
 .linkbtn { padding: 0; border: 0; background: none; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
 .linkbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* DATA row: "Upload CSV" (a one-button segmented control, styled like the active Absolute/Percentage button) + Template link; status line below */
+.dctl { display: flex; align-items: center; gap: 12px; white-space: nowrap; min-width: 0; }
+.dctl .seg { flex: none; }
+.seg button { padding: 7px 8px; margin: 0; cursor: pointer; font: inherit; font-size: 13px; line-height: inherit; white-space: nowrap; border-radius: 0;
+  background: var(--rim-sheen), var(--card); color: var(--accent-dark); font-weight: 600;
+  border: 1px solid var(--rim-side); border-top-color: var(--rim-top); border-bottom-color: transparent; box-shadow: var(--rim-shadow); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dctl .linkbtn { font-size: 13px; flex: none; }
+/* status: under the whole DATA row (full row width); the text wraps up to 3 lines so nothing is cut off; Clear on its own line below */
+.crow-data { row-gap: 8px; }
+.dstat { grid-column: 1 / -1; min-width: 0; display: grid; justify-items: start; gap: 2px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.dstat .dmsg { max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.dstat.err .dmsg { color: var(--accent); }
+.dstat .linkbtn { font-size: 13px; white-space: nowrap; }
 @media (max-width: 560px) {
   header.top h1 { font-size: 22px; }
   .stat .v { font-size: 26px; }
@@ -225,6 +240,11 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
           <div class="slider-head"><strong id="contrast-value" class="val">100%</strong></div>
           <input type="range" id="contrast" min="0" max="100" step="5" value="100" aria-valuetext="100%">
         </div>
+      </div>
+      <div class="crow crow-data">
+        <span class="clabel" id="lbl-data">Data</span>
+        <div class="dctl" role="group" aria-labelledby="lbl-data"><span class="seg"><button type="button" id="csv-upload">Upload CSV</button></span><button type="button" class="linkbtn" id="csv-template">Template</button><input type="file" id="csv-file" accept=".csv,text/csv" hidden></div>
+        <div class="dstat" id="csv-stat" role="status" hidden><span class="dmsg" id="csv-msg"></span><button type="button" class="linkbtn" id="csv-clear" hidden>Clear</button></div>
       </div>
   </section>
 
@@ -361,8 +381,9 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
   function afterLayers(r) { var v = r.households; DOORS.forEach(function (d) { if (state.layers[d]) v *= rate(r, d); }); return v; }
   // unit versions: sums over the unit's pieces (identical to the region functions for single-piece units)
   function uAfterLayers(u) { return d3.sum(u.pieces, afterLayers); }
-  function uRate(u, door) { return d3.sum(u.pieces, function (r) { return r.households * rate(r, door); }) / u.households; }
-  function toMode(hh, v) { return state.mode === "abs" ? v : v / hh * 100; }
+  // (the "hh ? : 0" guards only matter when an uploaded CSV sets a region's households to 0)
+  function uRate(u, door) { return u.households ? d3.sum(u.pieces, function (r) { return r.households * rate(r, door); }) / u.households : 0; }
+  function toMode(hh, v) { return state.mode === "abs" ? v : hh ? v / hh * 100 : 0; }
   function activeDoors() { return DOORS.filter(function (d) { return state.layers[d]; }); }
 
   // ---------- labels and formatting ----------
@@ -494,9 +515,10 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
   }
   function tipHTML(u) {
     var rows = "", summed = u.pieces.length > 1, li = layerOf(u.id), on = layerInfo.active.length;
-    rows += "<tr><td>Households" + (summed ? " (sum of 24 pieces)" : "") + "</td><td class='n'>" + fmtAbs(u.households) + "</td></tr>";
+    rows += "<tr><td>Households" + (summed ? " (sum of 24 pieces)" : "") + (upHas(u, "households") ? " <span class='off'> · uploaded</span>" : "") + "</td><td class='n'>" + fmtAbs(u.households) + "</td></tr>";
     DOORS.forEach(function (d, i) {
-      var tag = d === "money" ? (u.group === "ward" && state.cutoff === 2 ? " · estimated" : "") : OWN_K[d] != null ? " · your number" : " · placeholder";
+      var tag = d === "money" ? (upHas(u, MONEY_KEYS[state.cutoff]) ? " · uploaded" : u.group === "ward" && state.cutoff === 2 ? " · estimated" : "") :
+        OWN_K[d] != null ? " · your number" : upHas(u, d) ? " · uploaded" : " · placeholder";
       rows += "<tr" + (i === 0 ? " class='sep'" : "") + "><td>" + doorLabel(d) + (state.layers[d] ? "" : " <span class='off'>(off)</span>") +
         (summed ? " <span class='off'>(weighted)</span>" : "") + (tag ? " <span class='off'>" + tag + "</span>" : "") + "</td><td class='n'>" + pct(uRate(u, d)) + "</td></tr>";
       if (d === "money") {
@@ -678,6 +700,250 @@ input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-of
     });
     document.addEventListener("click", function (evt) { if (!ct.hidden && !ic.contains(evt.target)) show(false); });
   })();
+
+  // ---------- DATA row: CSV template download and browser-only CSV import ----------
+  // Nothing here runs until the viewer clicks Template / chooses or drops a file. The file is read in memory with
+  // the File API; nothing is uploaded or stored. Uploaded values replace the built-in .base / money / households
+  // (a backup restores them on Clear or before the next file).
+  var UP = null;        // null, or { byId: { regionId: { park: true, households: true, m20: true, ... } } }
+  var BUILTIN = null;   // backup of the built-in values, taken on the first upload
+  var CSV_COLS = ["id", "name_en", "name_ja", "households", "park", "charge", "timing", "money_10m", "money_15m", "money_20m"];
+  function upHas(u, key) { return !!UP && u.pieces.some(function (r) { var m = UP.byId[r.id]; return !!(m && m[key]); }); }
+
+  function csvField(v) { v = String(v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  // park / charge / timing: one decimal (61.8); money shares are small (Hokkaido over ¥20m = 0.589%), so three decimals keep a
+  // template round trip within 0.05% of the built-in totals (one decimal drifts ~0.4%, two ~0.07%)
+  function pct1(x) { return (Math.round(x * 1000) / 10).toFixed(1); }
+  function pct3(x) { return (Math.round(x * 100000) / 1000).toFixed(3); }
+  function templateCSV() {
+    var lines = [CSV_COLS.join(",")];
+    REGIONS.forEach(function (r) {
+      lines.push([r.id, r.name_en, r.name_ja, Math.round(r.households), pct1(r.park.base), pct1(r.charge.base), pct1(r.timing.base),
+        pct3(r.money.m10), pct3(r.money.m15), pct3(r.money.m20)].map(csvField).join(","));
+    });
+    return "﻿" + lines.join("\r\n") + "\r\n";
+  }
+  function downloadTemplate() {
+    var url = URL.createObjectURL(new Blob([templateCSV()], { type: "text/csv;charset=utf-8" }));
+    var a = document.createElement("a");
+    a.href = url; a.download = "heatmap-data.csv"; a.style.display = "none";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // RFC 4180-style parser: quoted fields with commas, line breaks and doubled quotes; CRLF or LF
+  function parseCSV(text, delim) {
+    var rows = [], row = [], f = "", q = false, i = 0, n = text.length, c;
+    for (; i < n; i++) {
+      c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+        else f += c;
+      } else if (c === '"') q = true;
+      else if (c === delim) { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+      else f += c;
+    }
+    if (f !== "" || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return x.trim() !== ""; }); });
+  }
+
+  function normHead(h) { return String(h).replace(/^﻿/, "").trim().toLowerCase().replace(/[\s_\-]/g, ""); }
+  var KEY_HEADS = ["id", "code", "region", "prefecture", "pref", "name", "nameen", "nameja", "都道府県", "地域"];
+  var VAL_HEADS = {
+    park: ["park", "canpark", "parking"], charge: ["charge", "cancharge", "charger"], timing: ["timing", "renewal", "renewalsoon", "buyingsoon"],
+    households: ["households", "hh", "世帯数"],
+    m10: ["money10m", "m10", "over10m"], m15: ["money15m", "m15", "over15m"], m20: ["money20m", "m20", "over20m"]
+  };
+  var FIELD_WORD = { park: "park", charge: "charge", timing: "renewal", households: "households" };
+
+  // region key -> list of REGIONS pieces (a whole-Tokyo key gives all 24 Tokyo pieces, flagged so pieces can override it)
+  var keyIndex = null;
+  function buildKeyIndex() {
+    var ix = { id: {}, en: {}, ja: {} };
+    function addJa(k, id) { if (k && !ix.ja[k]) ix.ja[k] = id; }
+    REGIONS.forEach(function (r) {
+      ix.id[r.id.toLowerCase()] = r.id;
+      ix.en[r.name_en.toLowerCase()] = r.id;
+      addJa(r.name_ja, r.id);
+      if (r.group === "prefecture" && /[都道府県]$/.test(r.name_ja)) addJa(r.name_ja.slice(0, -1), r.id);
+      if (r.group === "ward" && /区$/.test(r.name_ja)) addJa(r.name_ja.slice(0, -1), r.id);
+    });
+    ix.id[TOKYO_ID.toLowerCase()] = TOKYO_ID; ix.en.tokyo = TOKYO_ID; ix.ja["東京都"] = TOKYO_ID; ix.ja["東京"] = TOKYO_ID;
+    return ix;
+  }
+  function resolveKey(raw) {
+    var s = String(raw).trim(), id = null;
+    if (!s) return null;
+    keyIndex = keyIndex || buildKeyIndex();
+    var lo = s.toLowerCase();
+    if (keyIndex.id[lo]) id = keyIndex.id[lo];
+    else if (/^\d{1,2}$/.test(s) && +s >= 1 && +s <= 47) id = "JP-" + (+s < 10 ? "0" : "") + (+s);
+    else if (keyIndex.en[lo]) id = keyIndex.en[lo];
+    else if (keyIndex.ja[s]) id = keyIndex.ja[s];
+    else if (/[都道府県区]$/.test(s) && keyIndex.ja[s.slice(0, -1)]) id = keyIndex.ja[s.slice(0, -1)];
+    if (!id) return null;
+    if (id === TOKYO_ID) return { whole: true, pieces: tokyoPieces };
+    return byId[id] ? { whole: false, pieces: [byId[id]] } : null;
+  }
+  function parseNum(raw) {
+    var s = String(raw).trim().replace(/[,\s]/g, ""), pc = /%$/.test(s);
+    if (pc) s = s.slice(0, -1);
+    if (!/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(s)) return null;
+    return { v: +s, pc: pc };
+  }
+
+  function decodeBuf(buf) {
+    var t;
+    try { t = new TextDecoder("utf-8", { fatal: true }).decode(buf); }
+    catch (e) { t = new TextDecoder("shift_jis").decode(buf); }   // Excel on Japanese Windows saves Shift_JIS
+    return t.replace(/^﻿/, "");
+  }
+
+  // returns { error } or { plan, stats }; does not touch the data
+  function readCSV(text) {
+    if (/\u0000/.test(text)) return { error: "not a CSV file" };
+    var first = (text.split(/\r\n|\n|\r/).filter(function (l) { return l.trim() !== ""; })[0]) || "";
+    var delim = first.indexOf("\t") >= 0 && first.indexOf(",") < 0 ? "\t" : ",";
+    var rows = parseCSV(text, delim);
+    if (rows.length < 2) return { error: "not a CSV file" };
+    var head = rows[0].map(normHead), keyCols = [], valCols = {}, moneyCol = -1;
+    KEY_HEADS.forEach(function (k) { var i = head.indexOf(k); if (i >= 0) keyCols.push(i); });
+    if (!keyCols.length) return { error: "no id or name column" };
+    Object.keys(VAL_HEADS).forEach(function (f) {
+      for (var j = 0; j < head.length; j++) if (VAL_HEADS[f].indexOf(head[j]) >= 0) { valCols[f] = j; break; }
+    });
+    var mkey = MONEY_KEYS[state.cutoff];
+    if (valCols[mkey] == null && (moneyCol = head.indexOf("money")) >= 0) valCols[mkey] = moneyCol;
+    var fields = Object.keys(valCols);
+    if (!fields.length) return { error: "no usable columns" };
+    // scale per rate column: any value > 1 (or written with %) means percentages
+    var pctCol = {};
+    fields.forEach(function (f) {
+      if (f === "households") return;
+      pctCol[f] = rows.slice(1).some(function (r) { var p = parseNum(r[valCols[f]] || ""); return p && (p.pc || p.v > 1); });
+    });
+    var stats = { rows: 0, unknown: 0, bad: 0, used: {}, money: moneyCol >= 0 }, entries = [];
+    rows.slice(1).forEach(function (r) {
+      var target = null;
+      for (var k = 0; k < keyCols.length && !target; k++) target = resolveKey(r[keyCols[k]] || "");
+      if (!target) { stats.unknown++; return; }
+      var vals = {}, any = false;
+      fields.forEach(function (f) {
+        var cell = (r[valCols[f]] || "").trim();
+        if (cell === "") return;
+        var p = parseNum(cell);
+        if (!p || !isFinite(p.v) || (f === "households" && p.v < 0)) { stats.bad++; return; }
+        vals[f] = f === "households" ? p.v : Math.max(0, Math.min(1, pctCol[f] ? p.v / 100 : p.v));
+        any = true;
+      });
+      if (!any) return;
+      stats.rows++;
+      Object.keys(vals).forEach(function (f) { stats.used[f] = true; });
+      entries.push({ whole: target.whole, pieces: target.pieces, vals: vals });
+    });
+    if (!entries.length) return { error: "no known regions" + (stats.unknown ? " (" + stats.unknown + " skipped)" : "") + (stats.bad ? " · " + stats.bad + " bad cell" + (stats.bad === 1 ? "" : "s") : "") };
+    // whole-Tokyo rows first, then single pieces (so a ward / JP-13-REST row overrides the Tokyo row); file order otherwise
+    entries = entries.filter(function (e) { return e.whole; }).concat(entries.filter(function (e) { return !e.whole; }));
+    return { plan: entries, stats: stats };
+  }
+
+  function setField(r, f, v) {
+    if (f === "households") r.households = v;
+    else if (f === "park" || f === "charge" || f === "timing") r[f].base = v;
+    else r.money[f] = v;
+  }
+  function restoreBuiltins() {
+    if (!BUILTIN) return;
+    REGIONS.forEach(function (r, i) {
+      var b = BUILTIN[i];
+      r.households = b.households; r.park.base = b.park; r.charge.base = b.charge; r.timing.base = b.timing;
+      r.money.m10 = b.m10; r.money.m15 = b.m15; r.money.m20 = b.m20;
+    });
+    UP = null;
+  }
+  // everything cached from households / base rates: unit households (Tokyo sum), NAT_HH, OWN_DEFAULT + boxes
+  // (typed overrides and ?park=&charge=&timing= cleared). Ranking, totals and pct denominators are recomputed by render().
+  function refreshDerived() {
+    REGIONS.forEach(function (r) { units[r.id].households = r.households; });
+    units[TOKYO_ID].households = d3.sum(tokyoPieces, function (r) { return r.households; });
+    NAT_HH = d3.sum(REGIONS, function (r) { return r.households; });
+    OWN_DOORS.forEach(function (d) {
+      OWN_DEFAULT[d] = NAT_HH ? natAvg(d, 1) * 100 : 0;
+      setOwn(d, null);
+      document.getElementById("own-" + d).value = String(Math.round(OWN_DEFAULT[d]));
+    });
+    syncOwnURL(); syncOwnReset();
+    render();
+  }
+
+  var csvStat = document.getElementById("csv-stat"), csvMsg = document.getElementById("csv-msg"), csvClear = document.getElementById("csv-clear");
+  function setStatus(text, err) {
+    csvMsg.textContent = text || ""; csvMsg.title = text || "";
+    csvStat.hidden = !text; csvStat.classList.toggle("err", !!err);
+    csvClear.hidden = !UP;
+  }
+  function applyText(name, text) {
+    var res = readCSV(text);
+    if (res.error) { setStatus(name + ": " + res.error, true); return; }
+    if (!BUILTIN) BUILTIN = REGIONS.map(function (r) {
+      return { households: r.households, park: r.park.base, charge: r.charge.base, timing: r.timing.base, m10: r.money.m10, m15: r.money.m15, m20: r.money.m20 };
+    });
+    restoreBuiltins();
+    UP = { byId: {} };
+    res.plan.forEach(function (e) {
+      // whole-Tokyo households is a count: split it over the 24 pieces in proportion to their current households
+      // (rounded; the remainder goes to JP-13-REST so the sum is exact). Rates stay the same share for all 24.
+      var split = null;
+      if (e.whole && e.vals.households != null) {
+        var tot = e.vals.households, cur = d3.sum(e.pieces, function (r) { return r.households; }), acc = 0, rest = null;
+        split = {};
+        e.pieces.forEach(function (r) {
+          if (r.group === "tokyo_rest") { rest = r; return; }
+          split[r.id] = Math.round(cur ? r.households * tot / cur : tot / e.pieces.length); acc += split[r.id];
+        });
+        if (rest) split[rest.id] = tot - acc;
+      }
+      e.pieces.forEach(function (r) {
+        var m = UP.byId[r.id] || (UP.byId[r.id] = {});
+        Object.keys(e.vals).forEach(function (f) { setField(r, f, split && f === "households" ? split[r.id] : e.vals[f]); m[f] = true; });
+      });
+    });
+    var st = res.stats, words = [];
+    ["park", "charge", "timing"].forEach(function (f) { if (st.used[f]) words.push(FIELD_WORD[f]); });
+    if (MONEY_KEYS.some(function (k) { return st.used[k]; })) words.push(st.money ? "pay (money = over " + INCOME_STOP_LABELS[state.cutoff] + ")" : "pay");
+    if (st.used.households) words.push("households");
+    var msg = name + ": " + st.rows + " row" + (st.rows === 1 ? "" : "s") + " · " + words.join(", ");
+    if (st.unknown) msg += " · " + st.unknown + " unknown region" + (st.unknown === 1 ? "" : "s") + " skipped";
+    if (st.bad) msg += " · " + st.bad + " bad cell" + (st.bad === 1 ? "" : "s");
+    refreshDerived();
+    setStatus(msg, false);
+  }
+  function readFile(file) {
+    if (!file) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var text;
+      try { text = decodeBuf(new Uint8Array(fr.result)); } catch (e) { setStatus(file.name + ": could not read the text", true); return; }
+      applyText(file.name, text);
+    };
+    fr.onerror = function () { setStatus(file.name + ": could not read the file", true); };
+    fr.readAsArrayBuffer(file);
+  }
+
+  var csvFile = document.getElementById("csv-file");
+  document.getElementById("csv-upload").addEventListener("click", function () { csvFile.click(); });
+  csvFile.addEventListener("change", function () { var f = csvFile.files && csvFile.files[0]; readFile(f); csvFile.value = ""; });
+  document.getElementById("csv-template").addEventListener("click", downloadTemplate);
+  csvClear.addEventListener("click", function () { restoreBuiltins(); refreshDerived(); setStatus("", false); });
+  // drag a file anywhere on the page; the browser must not open it
+  function hasFiles(evt) { var t = evt.dataTransfer && evt.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, "Files") >= 0; }
+  document.addEventListener("dragover", function (evt) { if (hasFiles(evt)) { evt.preventDefault(); evt.dataTransfer.dropEffect = "copy"; } });
+  document.addEventListener("drop", function (evt) {
+    if (!hasFiles(evt)) return;
+    evt.preventDefault();
+    readFile(evt.dataTransfer.files[0]);
+  });
 
   render();
 })();
